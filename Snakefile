@@ -2,6 +2,7 @@
 
 import os
 import re
+import subprocess
 import pathlib
 
 
@@ -12,6 +13,18 @@ import pathlib
 def resolve_path(x):
     mypath = pathlib.Path(x).resolve()
     return str(mypath)
+
+
+def get_branch():
+    p = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                         stdout=subprocess.PIPE)
+    return p.stdout.readline().decode().rstrip('\n')
+
+
+def get_hash():
+    p = subprocess.Popen(['git', 'rev-parse', 'HEAD'],
+                         stdout=subprocess.PIPE)
+    return p.stdout.readline().decode().rstrip('\n')
 
 
 ###########
@@ -28,11 +41,14 @@ k = ['99']
 # SETUP #
 #########
 
+# parse the GIT info
+print('git branch: {0}'.format(get_branch()))
+print('git hash: {0}'.format(get_hash()))
+
 # get a list of fastq files
-read_path = resolve_path(read_dir)
 read_dir_files = list((dirpath, filenames)
                       for (dirpath, dirnames, filenames)
-                      in os.walk(read_path))
+                      in os.walk(read_dir, followlinks=True))
 
 all_fastq_files = []
 
