@@ -109,7 +109,7 @@ rule trim_decon:
         'ktrim=r k=23 mink=10 hdist=1 tpe tbo '
         'forcetrimmod=5 '
         'stats={output.trim_stats} '
-        'lhist={output.trim_lhist}'
+        'lhist={output.trim_lhist} '
         '2> {log.trim}'
 
 # normalise
