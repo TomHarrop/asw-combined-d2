@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import datetime
 import os
 import re
 import subprocess
@@ -15,18 +16,6 @@ def resolve_path(x):
     return str(mypath)
 
 
-def get_branch():
-    p = subprocess.Popen(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
-                         stdout=subprocess.PIPE)
-    return p.stdout.readline().decode().rstrip('\n')
-
-
-def get_hash():
-    p = subprocess.Popen(['git', 'rev-parse', 'HEAD'],
-                         stdout=subprocess.PIPE)
-    return p.stdout.readline().decode().rstrip('\n')
-
-
 ###########
 # GLOBALS #
 ###########
@@ -36,14 +25,21 @@ meraculous_config_file = 'src/meraculous_config.txt'
 read_set = ['norm', 'trim_decon']
 k = ['99']
 
+log_code = ('printf "date,branch,hash\n%s,%s,%s\n" '
+            '"$(date)" '
+            '"$(git rev-parse --abbrev-ref HEAD)" '
+            '$(git rev-parse HEAD)" '
+            '&>> {log.run} ; ')
+
 
 #########
 # SETUP #
 #########
 
 # parse the GIT info
-print('git branch: {0}'.format(get_branch()))
-print('git hash: {0}'.format(get_hash()))
+print('Job run at {0}'.format(time_now()))
+print('Branch: {0}'.format(get_branch()))
+print('Hash: {0}'.format(get_hash()))
 
 # get a list of fastq files
 read_dir_files = list((dirpath, filenames)
