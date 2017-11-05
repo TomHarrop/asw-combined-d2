@@ -23,7 +23,7 @@ def resolve_path(x):
 read_dir = 'data/reads/'
 meraculous_config_file = 'src/meraculous_config.txt'
 read_set = ['norm', 'trim_decon']
-k = ['99']
+kmer_lengths = ['99']
 
 run_log = ('printf "date,branch,hash\\n%s,%s,%s\\n" '
             '"$(date)" '
@@ -61,7 +61,9 @@ r2_files = sorted(list(x for x in all_fastq_files if '_2.fastq.gz' in x))
 
 rule target:
     input:
-        'output/trim_decon/reads.fastq.gz'
+        'output/trim_decon/reads.fastq.gz',
+        expand('output/k_{kmer}/norm/normalised.fastq.gz',
+               kmer=kmer_lengths)
 
 rule trim_decon:
     input:
@@ -75,13 +77,12 @@ rule trim_decon:
     log:
         run = 'logs/trim_decon.run',
         repair = 'logs/repair.log',
-        decon = 'logs/decon.log',
-        trim = 'logs/trim.log'
+        decon = 'logs/bbduk_decon.log',
+        trim = 'logs/bbduk_trim.log'
     threads:
         25
     shell:
         run_log +
-        'echo \''
         'zcat {input.fq}'
         ' | '
         'bin/bbmap/repair.sh '
@@ -110,5 +111,32 @@ rule trim_decon:
         'stats={output.trim_stats} '
         'lhist={output.trim_lhist}'
         '2> {log.trim}'
-        '\''
 
+# normalise
+rule norm:
+    input:
+        fq = 'output/trim_decon/reads.fastq.gz'
+    output:
+        fq = 'output/k_{kmer}/norm/normalised.fastq.gz',
+        hist = 'output/k_{kmer}/norm/hist_before.txt',
+        hist_out = 'output/k_{kmer}/norm/hist_after.txt',
+        peaks = 'output/k_{kmer}/norm/peaks.txt',
+    log:
+        run = 'logs/norm.run',
+        norm = 'logs/bbnorm_k{kmer}.log'
+    threads:
+        50
+    shell:
+        run_log +
+        'bin/bbmap/bbnorm.sh '
+        'in={input.fq} '
+        'threads={threads} '
+        'out={output.fq} '
+        'hist={output.hist} '
+        'histout={output.hist_out} '
+        'target=50 '
+        'min=5 '
+        'prefilter ecc '
+        'k={wildcards.kmer} '
+        'peaks={output.peaks} '
+        '2> {log.norm}'
