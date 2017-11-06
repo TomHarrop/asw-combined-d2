@@ -80,7 +80,6 @@ rule reformat:
     shell:
         run_log +
         'bin/bbmap/reformat.sh '
-        'verifypaired verifyinterleaved '
         'in={input.r1} '
         'in2={input.r2} '
         'out={output.fq} '
