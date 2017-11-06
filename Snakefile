@@ -16,6 +16,14 @@ def resolve_path(x):
     return str(mypath)
 
 
+def reformat_input(wildcards):
+    r1 = [x for x in all_fastq_files
+          if wildcards.pe in x and '_1' in x]
+    r2 = [x for x in all_fastq_files
+          if wildcards.pe in x and '_2' in x]
+    return {'r1': r1, 'r2': r2}
+
+
 ###########
 # GLOBALS #
 ###########
@@ -48,12 +56,6 @@ for dirpath, filenames in read_dir_files:
         if 'fastq.gz' in filename:
             all_fastq_files.append(os.path.join(dirpath, filename))
 
-sorted(all_fastq_files)
-
-# separate list of R1 and R2
-r1_files = sorted(list(x for x in all_fastq_files if '_1.fastq.gz' in x))
-r2_files = sorted(list(x for x in all_fastq_files if '_2.fastq.gz' in x))
-
 
 #########
 # RULES #
@@ -65,9 +67,37 @@ rule target:
         expand('output/k_{kmer}/norm/normalised.fastq.gz',
                kmer=kmer_lengths)
 
+rule reformat:
+    input:
+        unpack(reformat_input)
+    output:
+        fq = temp('output/reformat/{pe}.fastq')
+    log:
+        run = 'logs/reformat.run',
+        reformat = 'logs/reformat.log'
+    threads:
+        1
+    shell:
+        run_log +
+        'bin/bbmap/reformat.sh '
+        'verifypaired verifyinterleaved '
+        'in={input.r1} '
+        'in2={input.r2} '
+        'out={output.fq} '
+        '2> {log.reformat}'
+
+rule concatenate:
+    input:
+        expand('output/reformat/{pe}.fastq',
+               pe=['pe100', 'pe150'])
+    output:
+        temp('output/reformat/reads.fastq')
+    shell:
+        'cat {input} > {output}'
+
 rule trim_decon:
     input:
-        fq = sorted(all_fastq_files)
+        fq = 'output/reformat/reads.fastq'
     output:
         fq = 'output/trim_decon/reads.fastq.gz',
         repair_singles = temp('output/trim_decon/singles.fastq.gz'),
@@ -80,16 +110,14 @@ rule trim_decon:
         decon = 'logs/bbduk_decon.log',
         trim = 'logs/bbduk_trim.log'
     threads:
-        25
+        16
     shell:
         run_log +
-        'zcat {input.fq}'
-        ' | '
         'bin/bbmap/repair.sh '
-        'in=stdin.fq '
+        'in={input.fq} '
         'outs={output.repair_singles} '
         'out=stdout.fq '
-        'repair '
+        'fixinterleaving repair=f '
         '2> {log.repair}'
         ' | '
         'bin/bbmap/bbduk.sh '
