@@ -24,6 +24,23 @@ def reformat_input(wildcards):
     return {'r1': r1, 'r2': r2}
 
 
+def assembly_input(wildcards):
+    all_output_files = list((dirpath, filenames)
+                            for (dirpath, dirnames, filenames)
+                            in os.walk('output', followlinks=True))
+    output_fastq_files = []
+    for dirpath, filenames in all_output_files:
+        for filename in filenames:
+            if 'fastq.gz' in filename:
+                output_fastq_files.append(os.path.join(dirpath, filename))
+    if wildcards.read_set == 'trim_decon':
+        return [x for x in output_fastq_files if 'trim_decon' in x][0]
+    if wildcards.read_set == 'norm':
+        return [x for x in output_fastq_files
+                if ('normalised.fastq.gz' in x
+                    and 'k_{0}'.format(wildcards.kmer) in x)][0]
+
+
 ###########
 # GLOBALS #
 ###########
@@ -34,10 +51,10 @@ read_set = ['norm', 'trim_decon']
 kmer_lengths = ['99']
 
 run_log = ('printf "date,branch,hash\\n%s,%s,%s\\n" '
-            '"$(date)" '
-            '"$(git rev-parse --abbrev-ref HEAD)" '
-            '"$(git rev-parse HEAD)" '
-            '&>> {log.run} ; ')
+           '"$(date)" '
+           '"$(git rev-parse --abbrev-ref HEAD)" '
+           '"$(git rev-parse HEAD)" '
+           '&>> {log.run} ; ')
 
 
 #########
@@ -56,16 +73,22 @@ for dirpath, filenames in read_dir_files:
         if 'fastq.gz' in filename:
             all_fastq_files.append(os.path.join(dirpath, filename))
 
+# read the meraculous config
+with open(meraculous_config_file, 'rt') as f:
+    meraculous_config_string = ''.join(f.readlines())
+
 
 #########
 # RULES #
 #########
 
+# just turn norm back on here when k>31 is fixed
 rule target:
     input:
         'output/trim_decon/reads.fastq.gz',
-        expand('output/k_{kmer}/norm/normalised.fastq.gz',
-               kmer=kmer_lengths)
+        expand(('output/meraculous/k_{kmer}/{read_set}/'
+                'meraculous_final_contigs/final.scaffolds.fa'),
+               kmer=kmer_lengths, read_set=['trim_decon'])
 
 rule reformat:
     input:
@@ -83,7 +106,7 @@ rule reformat:
         'in={input.r1} '
         'in2={input.r2} '
         'out={output.fq} '
-        '2> {log.reformat}'
+        '2>> {log.reformat}'
 
 rule concatenate:
     input:
@@ -169,3 +192,34 @@ rule norm:
         'k={wildcards.kmer} '
         'peaks={output.peaks} '
         '2> {log.norm}'
+
+# assemblies
+rule meraculous:
+    input:
+        fq = assembly_input
+    output:
+        fa = ('output/meraculous/k_{kmer}/{read_set}/'
+              'meraculous_final_contigs/final.scaffolds.fa'),
+        config = ('output/meraculous/k_{kmer}/{read_set}/'
+                  'meraculous.conf')
+    params:
+        wd = 'output/meraculous/k_{kmer}/{read_set}/'
+    log:
+        run = 'logs/meraculous_{read_set}_{kmer}.run',
+        log = 'logs/meraculous_{read_set}_{kmer}.log'
+    threads:
+        50
+    run:
+        shell(run_log)
+        # configure meraculous
+        my_fastq = resolve_path(input.fq)
+        my_conf = meraculous_config_string.format(
+            my_fastq, wildcards.kmer, threads)
+        with open(output.config, 'wt') as f:
+            f.write(my_conf)
+        # call assembler
+        shell('bin/meraculous/run_meraculous.sh '
+              '-dir {params.wd} '
+              '-config {output.config} '
+              '&> {log.log}')
+
