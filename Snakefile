@@ -203,7 +203,7 @@ rule meraculous:
         config = ('output/meraculous/k_{kmer}/{read_set}/'
                   'meraculous.conf')
     params:
-        wd = 'output/meraculous/k_{kmer}/{read_set}/'
+        wd = 'output/meraculous/k_{kmer}/{read_set}'
     log:
         run = 'logs/meraculous_{read_set}_{kmer}.run',
         log = 'logs/meraculous_{read_set}_{kmer}.log'
