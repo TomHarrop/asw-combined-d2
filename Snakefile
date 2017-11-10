@@ -208,7 +208,7 @@ rule meraculous:
         run = 'logs/meraculous_{read_set}_{kmer}.run',
         log = 'logs/meraculous_{read_set}_{kmer}.log'
     threads:
-        50
+        25
     run:
         shell(run_log)
         # configure meraculous
