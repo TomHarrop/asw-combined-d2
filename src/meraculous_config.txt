@@ -1,0 +1,11 @@
+# config file for meraculous
+lib_seq             {0} PE 400 50 100 0 0 1 1 1 0 0 
+genome_size         0.7
+mer_size            {1}
+diploid_mode        2
+min_depth_cutoff    0
+local_num_procs     {2}
+local_max_memory    10
+use_cluster         0
+no_read_validation  1
+num_prefix_blocks   6
