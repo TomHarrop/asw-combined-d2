@@ -233,9 +233,9 @@ rule bevel:
         fa = ('output/meraculous/k_{kmer}/{read_set}/'
               'meraculous_final_results/final.scaffolds.fa')
     output:
-        'output/bevel/k_{kmer}/{read_set}/results.tsv'
-    params:
-        tmp_fa = 'output/bevel/k_{kmer}/{read_set}/scaffolds.fa'
+        results = 'output/bevel/k_{kmer}/{read_set}/results.tsv',
+        seqlength = 'output/bevel/k_{kmer}/{read_set}/seqlength.tsv',
+        tmp_fa = temp('output/bevel/k_{kmer}/{read_set}/scaffolds.fa')
     log:
         run = 'logs/bevel_{read_set}_{kmer}.run',
         log = 'logs/bevel_{read_set}_{kmer}.log'
@@ -243,13 +243,13 @@ rule bevel:
         run_log +
         'bin/bbmap/reformat.sh '
         'in={input.fa} '
-        'out={params.tmp_fa} '
+        'out={output.tmp_fa} '
         'minlength=1000 '
         '; '
         'bin/bevel/bevel '
         '-d -k 32 '
-        '{params.tmp_fa} {params.tmp_fa} '
-        '> {output} '
-        '2> {log.log}'
-
-
+        '{output.tmp_fa} {output.tmp_fa} '
+        '> {output.results} '
+        '2> {log.log} '
+        '; '
+        'src/fasta_seqlength.py {output.tmp_fa} > {output.seqlength}'
