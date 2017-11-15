@@ -89,8 +89,8 @@ rule target:
         expand(('output/meraculous/k_{kmer}/{read_set}/'
                 'meraculous_final_results/final.scaffolds.fa'),
                kmer=kmer_lengths, read_set=['trim_decon']),
-        expand(('output/bevel/k_{kmer}/{read_set}/'
-                'results.tsv'),
+        expand(('output/minimap/k_{kmer}/{read_set}/'
+                'results.paf'),
                kmer=kmer_lengths, read_set=['trim_decon'])
 
 rule reformat:
@@ -228,6 +228,33 @@ rule meraculous:
 
 
 # try to align 280k "scaffolds"
+rule minimap:
+    input:
+        fa = ('output/meraculous/k_{kmer}/{read_set}/'
+              'meraculous_final_results/final.scaffolds.fa'),
+    output:
+        results = 'output/minimap/k_{kmer}/{read_set}/results.paf',
+        tmp_fa = temp('output/minimap/k_{kmer}/{read_set}/scaffolds.fa')
+    log:
+        run = 'logs/minimap2_{read_set}_{kmer}.run',
+        log = 'logs/minimap2_{read_set}_{kmer}.log'
+    threads:
+        25
+    shell:
+        run_log +
+        'bin/bbmap/reformat.sh '
+        'in={input.fa} '
+        'out={output.tmp_fa} '
+        'minlength=1000 '
+        '; '
+        'bin/minimap2 '
+        '-t {threads} '
+        '-x asm5 '
+        '{output.tmp_fa} {output.tmp_fa} '
+        '> {output.results} '
+        '2> {log.log}'
+
+
 rule bevel:
     input:
         fa = ('output/meraculous/k_{kmer}/{read_set}/'
