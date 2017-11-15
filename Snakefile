@@ -250,6 +250,7 @@ rule minimap:
         'bin/minimap2 '
         '-t {threads} '
         '-x asm5 '
+        '-X '
         '{output.tmp_fa} {output.tmp_fa} '
         '> {output.results} '
         '2> {log.log}'
