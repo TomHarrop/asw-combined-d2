@@ -87,7 +87,10 @@ rule target:
     input:
         'output/trim_decon/reads.fastq.gz',
         expand(('output/meraculous/k_{kmer}/{read_set}/'
-                'meraculous_final_contigs/final.scaffolds.fa'),
+                'meraculous_final_results/final.scaffolds.fa'),
+               kmer=kmer_lengths, read_set=['trim_decon']),
+        expand(('output/bevel/k_{kmer}/{read_set}/'
+                'results.tsv'),
                kmer=kmer_lengths, read_set=['trim_decon'])
 
 rule reformat:
@@ -199,7 +202,7 @@ rule meraculous:
         fq = assembly_input
     output:
         fa = ('output/meraculous/k_{kmer}/{read_set}/'
-              'meraculous_final_contigs/final.scaffolds.fa'),
+              'meraculous_final_results/final.scaffolds.fa'),
         config = ('output/meraculous/k_{kmer}/{read_set}/'
                   'meraculous.conf')
     params:
@@ -222,4 +225,24 @@ rule meraculous:
               '-dir {params.wd} '
               '-config {output.config} '
               '&> {log.log}')
+
+
+# try to align 280k "scaffolds"
+rule bevel:
+    input:
+        fa = ('output/meraculous/k_{kmer}/{read_set}/'
+              'meraculous_final_results/final.scaffolds.fa')
+    output:
+        'output/bevel/k_{kmer}/{read_set}/results.tsv'
+    log:
+        run = 'logs/bevel_{read_set}_{kmer}.run',
+        log = 'logs/bevel_{read_set}_{kmer}.log'
+    shell:
+        run_log +
+        'bin/bevel/bevel '
+        '-d -k 32 '
+        '{input.fa} {input.fa} '
+        '> {output} '
+        '2> {log.log}'
+
 
