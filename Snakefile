@@ -89,8 +89,7 @@ rule target:
         expand(('output/meraculous/k_{kmer}/{read_set}/'
                 'meraculous_final_results/final.scaffolds.fa'),
                kmer=kmer_lengths, read_set=['trim_decon']),
-        expand(('output/minimap/k_{kmer}/{read_set}/'
-                'results.paf'),
+        expand('output/mummer/k_{kmer}/{read_set}/results.delta',
                kmer=kmer_lengths, read_set=['trim_decon'])
 
 rule reformat:
@@ -228,6 +227,34 @@ rule meraculous:
 
 
 # try to align 280k "scaffolds"
+rule mummer:
+    input:
+        fa = ('output/meraculous/k_{kmer}/{read_set}/'
+              'meraculous_final_results/final.scaffolds.fa'),
+    output:
+        results = 'output/mummer/k_{kmer}/{read_set}/results.delta',
+        tmp_fa = temp('output/mummer/k_{kmer}/{read_set}/scaffolds.fa')
+    params:
+        prefix = 'output/mummer/k_{kmer}/{read_set}/results'
+    log:
+        run = 'logs/mummer_{read_set}_{kmer}.run',
+        log = 'logs/mummer_{read_set}_{kmer}.log'
+    threads:
+        25
+    shell:
+        run_log +
+        'bin/bbmap/reformat.sh '
+        'in={input.fa} '
+        'out={output.tmp_fa} '
+        'minlength=1000 '
+        '; '
+        'bin/mummer/nucmer '
+        '--prefix={params.prefix} '
+        '--threads={threads} '
+        '{output.tmp_fa} {output.tmp_fa} '
+        '2> {log.log}'
+
+
 rule minimap:
     input:
         fa = ('output/meraculous/k_{kmer}/{read_set}/'
@@ -254,30 +281,3 @@ rule minimap:
         '{output.tmp_fa} {output.tmp_fa} '
         '> {output.results} '
         '2> {log.log}'
-
-
-rule bevel:
-    input:
-        fa = ('output/meraculous/k_{kmer}/{read_set}/'
-              'meraculous_final_results/final.scaffolds.fa')
-    output:
-        results = 'output/bevel/k_{kmer}/{read_set}/results.tsv',
-        seqlength = 'output/bevel/k_{kmer}/{read_set}/seqlength.tsv',
-        tmp_fa = temp('output/bevel/k_{kmer}/{read_set}/scaffolds.fa')
-    log:
-        run = 'logs/bevel_{read_set}_{kmer}.run',
-        log = 'logs/bevel_{read_set}_{kmer}.log'
-    shell:
-        run_log +
-        'bin/bbmap/reformat.sh '
-        'in={input.fa} '
-        'out={output.tmp_fa} '
-        'minlength=1000 '
-        '; '
-        'bin/bevel/bevel '
-        '-d -k 32 '
-        '{output.tmp_fa} {output.tmp_fa} '
-        '> {output.results} '
-        '2> {log.log} '
-        '; '
-        'src/fasta_seqlength.py {output.tmp_fa} > {output.seqlength}'
